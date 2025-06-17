@@ -155,7 +155,7 @@ class ATM:
              print('*' * 5, 'ACCESS DENIED', '*' * 5)
              print('*' * 5, 'EMAILID OR CAPTCHA DOSE NOT MATCH', '*' * 5)
     def password_check(self,pw):
-        with open('password.txt') as f:
+        with open('./Password.txt') as f:
             password=f.read()
         if password==pw:
             return True
