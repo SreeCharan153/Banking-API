@@ -47,7 +47,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:  ")
         state=self.check(h=holder)
         if state==True:
-            file=holder+".txt"
+            file='./'+holder+".txt"
             with open(file) as h:
                 l=h.readlines()
             l1=l[4].split(':')
@@ -66,7 +66,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:")
         state=self.check(h=holder)
         if state==True:
-            file=holder+'.txt'
+            file='./'+holder+'.txt'
             with open(file) as h:
                 l=h.readlines()
             l1=l[4].split(':')
@@ -88,7 +88,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:")
         state=self.check(h=holder)
         if state==True:
-            file=holder+'.txt'
+            file='./'+holder+'.txt'
             with open(file,'r') as h:
                 l=h.readlines()
             print(l[4])
@@ -96,7 +96,7 @@ class ATM:
             print('*'*5,"WRONG PASSWORD",'*'*5)
     def check(self,h):
         pin=int(input('ENTER PIN:'))
-        file=h+".txt"
+        file='./'+h+".txt"
         try:
             with open(file) as h:
                 l=h.readlines()
@@ -123,7 +123,7 @@ class ATM:
         omobile=input("ENTER OLD MOBILE NUMBER")
         c= self.captcha()
         omobile=omobile+'\n'
-        file=h+'.txt'
+        file='./'+h+'.txt'
         with open(file,'r') as h:
             l=h.readlines()
         l1=l[2].split(':')
