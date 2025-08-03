@@ -44,7 +44,7 @@ class UpdateEmailRequest(AccountBase):
 def read_root():
     return {"message": "Welcome to the ATM API"}
 
-@app.post("/")
+@app.post("/check-password/")
 def check_password(pas: str):
     if atm.password_check(pas):
         return {"message": "Password is correct"}
