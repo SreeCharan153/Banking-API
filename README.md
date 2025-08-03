@@ -31,6 +31,7 @@ Built entirely in Python using file handling and object-oriented programming.
 | `Accounts List.txt`  | Stores all created account IDs |
 | `Password.txt`       | Admin-level password storage |
 | `ACXXXX.txt`         | Individual user account files |
+| `API.py`             | API to integrate with web   |
 | `GUI.py` *(optional)*| Future GUI module placeholder |
 
 ---
