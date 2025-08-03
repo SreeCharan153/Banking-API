@@ -49,7 +49,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:  ")
         state=self.check(h=holder)
         if state==True:
-            file='./'+holder+".txt"
+            file = f"./Accounts/{holder}.txt"
             with open(file) as h:
                 l=h.readlines()
             self.balance=int(l[4].split(':')[1].strip())
@@ -78,7 +78,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:")
         state=self.check(h=holder)
         if state==True:
-            file='./'+holder+'.txt'
+            file = f"./Accounts/{holder}.txt"
             with open(file) as h:
                 l=h.readlines()
             self.balance=int(l[4].split(':')[1].strip())
@@ -108,7 +108,7 @@ class ATM:
         holder=input("ENTER ACCOUNT NUMBER:")
         state=self.check(h=holder)
         if state==True:
-            file='./'+holder+'.txt'
+            file = f"./Accounts/{holder}.txt"
             with open(file,'r') as h:
                 l=h.readlines()[4]
             print("ACCOUNT"+l.strip())
@@ -117,7 +117,7 @@ class ATM:
 
 
     def check(self,h):
-        file='./'+h+".txt"
+        file = f"./Accounts/{h}.txt"
         try:
             with open(file) as h:
                 l=h.readlines()[1]
@@ -169,7 +169,7 @@ class ATM:
             except ValueError as e:
                 print('*' * 5, e, '*' * 5)
         c= self.captcha()
-        file='./'+h+'.txt'
+        file = f"./Accounts/{h}.txt"
         with open(file,'r') as h:
             l=h.readlines()
         l1=l[2].split(':')[1].strip()
@@ -196,7 +196,7 @@ class ATM:
             except ValueError as e:
                 print('*' * 5, e, '*' * 5)
         c=self.captcha()
-        file=h+'.txt'
+        file = f"./Accounts/{h}.txt"
         with open(file,'r') as h:
             l=h.readlines()
         l1=l[3].split(':')[1].strip().lower()
