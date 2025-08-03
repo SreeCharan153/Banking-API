@@ -39,9 +39,13 @@ class UpdateMobileRequest(AccountBase):
 class UpdateEmailRequest(AccountBase):
     nemail: EmailStr
     oemail: EmailStr
+    
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the ATM API"}
 
 @app.post("/")
-def read_root(pas: str):
+def check_password(pas: str):
     if atm.password_check(pas):
         return {"message": "Password is correct"}
     else:
