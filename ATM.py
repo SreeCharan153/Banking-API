@@ -23,8 +23,8 @@ class ATM:
             if '@' not in gmail:
                 raise KeyError('INVALIED EMAIL ID')
             b=self.ac()
-            file=b+".txt"
-            with open("default.txt") as d,open(file,'x') as h:
+            file = f"./Accounts/{b}.txt"
+            with open("./Accounts/default.txt") as d,open(file,'x') as h:
                 l1=d.readlines()
                 h.writelines(l1)
             with open(file) as h,open('Accounts List.txt','a') as acc:
