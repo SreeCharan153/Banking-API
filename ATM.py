@@ -13,7 +13,16 @@ class ATM:
             l=l.strip('AC')
             l='AC'+str(int(l)+1)
             return l
-        
+    
+    def transfor(self,sender,receiver,amount,pin):
+        s,m = self.withdraw(sender, amount, pin)
+        if not s:
+            return m
+        s,m =  self.deposit(receiver, amount, "bypass")
+        if not s:
+            self.deposit(sender, amount, "bypass")
+            return m
+        return f"₹{amount} Transferred from {sender} to {receiver}"
 
     def create(self,holder,pin,mobileno,gmail):
         try:
@@ -44,7 +53,11 @@ class ATM:
 
 
     def deposit(self,holder, amount, pin):
-        state,m=self.check(h=holder, pin=pin)
+        if pin == "bypass":
+            state = True
+            m = "Transforing amount to account"
+        else:
+            state, m = self.check(h=holder, pin=pin)
         if state :
             file = f"./Accounts/{holder}.txt"
             with open(file) as f:
@@ -71,18 +84,18 @@ class ATM:
                 l=h.readlines()
             self.balance=int(l[4].split(':')[1].strip())
             if self.balance<=0:
-                return("Balance is negative or Zero, please deposit first.")
+                return(False,"Balance is negative or Zero, please deposit first.")
             else:
                 if self.balance<amount:
-                    return("Insufficient Balance")
+                    return(False,"Insufficient Balance")
                 elif amount <= 0:
-                    return("Amount must be greater than zero.")
+                    return(False,"Amount must be greater than zero.")
                 else:
                     self.balance=self.balance-amount
                     l[4]='BALANCE:'+str(self.balance)+'\n'
                     with open(file,'w+') as h:
                         h.writelines(l)
-                    return(f"Transaction successful! New Balance: ₹{self.balance}")
+                    return(True,f"Transaction successful! New Balance: ₹{self.balance}")
         else:
             return(m)
 

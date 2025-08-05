@@ -26,6 +26,9 @@ class AccountBase(BaseModel):
 class TransactionRequest(AccountBase):
     amount: int
 
+class TransforRequest(TransactionRequest):
+    r: str
+    
 class CreateAccountRequest(BaseModel):
     h: str
     pin: str
@@ -54,13 +57,19 @@ def check_password(pas: str):
             content={"detail": "Incorrect password"}
         )
 
+@app.post("/transfor/")
+def transfer_amount(data: TransforRequest):
+    return {"message": atm.transfor(data.h, data.r, data.amount, data.pin)}
+
 @app.post("/deposit/")
 def deposit_amount(data: TransactionRequest):
-    return {"message": atm.deposit(data.h, data.amount, data.pin)}
+    s,m = atm.deposit(data.h, data.amount, data.pin)
+    return {"message": m}
 
 @app.post("/withdraw/")
 def withdraw_amount(data: TransactionRequest):
-    return {"message": atm.withdraw(data.h, data.amount, data.pin)}
+    s,m = atm.withdraw(data.h, data.amount, data.pin)
+    return {"message": m}
 
 @app.post("/create/")
 def create_account(data: CreateAccountRequest):
