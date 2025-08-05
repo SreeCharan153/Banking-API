@@ -195,10 +195,15 @@ class ATM:
             return(f'ACCESS DENIED\nEMAILID OR CAPTCHA DOSE NOT MATCH')
 
 
-    def password_check(self,pw):
-        with open('./Password.txt') as f:
-            password=f.read().strip()
-        return pw == password
+    def password_check(self,h,pw):
+        if h != "admin":
+            with open(f"./Accounts/{h}.txt") as f:
+                l=f.readlines()[1]
+                return l.split(':')[1].strip() == pw
+        else:
+            with open('./Password.txt') as f:
+                password=f.read().strip()
+            return pw == password
         
 
     def captcha(self):

@@ -48,8 +48,8 @@ def read_root():
     return {"message": "Welcome to the ATM API"}
 
 @app.post("/check-password/")
-def check_password(pas: str):
-    if atm.password_check(pas):
+def check_password(h: str,pas: str):
+    if atm.password_check(h,pas):
         return {"message": "Password is correct"}
     else:
         return JSONResponse(
