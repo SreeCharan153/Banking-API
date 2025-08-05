@@ -64,14 +64,14 @@ class ATM:
                 l=f.readlines()
             self.balance=int(l[4].split(':')[1].strip())
             if self.balance<0:
-                return "Balance is negative, please deposit first."
+                return (False,"Balance is negative, please deposit first.")
             if amount <= 0:
-                return "Amount must be greater than zero."
+                return (False,"Amount must be greater than zero.")
             self.balance=self.balance+amount
             l[4]='BALANCE:'+str(self.balance)+'\n'
             with open(file,'w+') as f:
                 f.writelines(l)
-            return(f"Transaction successful! New Balance: ₹{self.balance}")
+            return(True,f"Transaction successful! New Balance: ₹{self.balance}")
         else:
             return m
 
