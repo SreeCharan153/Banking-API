@@ -79,6 +79,10 @@ def create_account(data: CreateAccountRequest):
 def update_mobile(data: UpdateMobileRequest):
     return {"message": atm.mobile(data.h, data.nmobile, data.omobile)}
 
+@app.post("/enquiry/")
+def enquiry(data: AccountBase):
+    return{"message": atm.enquiry(data.h,data.pin)}
+
 @app.post("/update-email/")
 def update_email(data: UpdateEmailRequest):
     return {"message": atm.email(data.h, data.nemail, data.oemail)}

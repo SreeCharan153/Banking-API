@@ -106,7 +106,7 @@ class ATM:
             file = f"./Accounts/{holder}.txt"
             with open(file,'r') as h:
                 l=h.readlines()[4]
-            return("ACCOUNT"+l.strip())
+            return("ACCOUNT Balance:"+l.strip())
         else:
             return m
 
@@ -117,7 +117,7 @@ class ATM:
             with open(file) as h:
                 l=h.readlines()[1]
         except:
-            return (False,"HOLDER NOT FOUND")
+            return (False,"HOLDER NOT FOUND in check")
         else:
             l=l.split(':')[1]
             try:
