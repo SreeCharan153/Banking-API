@@ -129,27 +129,28 @@ class ATM:
                     return (False,"WRONG PIN")
             except ValueError:
                 return(False,"Invalid input. Please enter a numeric PIN.")
-    
 
-    '''def update(self):
-        holder=input("ENTER ACCOUNT NUMBER:  ")
-        state=self.check(h=holder)
-        if state==True:
-            while True:
-                try:
-                    option=int(input("Enter\n1.FOR MOBILE NUMBER\n2.FOR EMAIL ID\n"))
-                    if option not in [1, 2]:
-                        raise ValueError("Invalid option. Please enter 1 or 2.")
-                except ValueError as e:
-                    print('*'*5, e, '*'*5)
-                else:
-                    break
-            match option:
-                case 1:
-                    self.mobile(h=holder)
-                case 2:
-                    self.email(h=holder)'''
-
+    def change_pin(self,h,new_pin,old_pin):
+        new_pin = str(new_pin)
+        old_pin = str(old_pin)
+        try:
+            if len(new_pin) != 4 or not new_pin.isdigit():
+                raise ValueError("PIN must be 4 digits.")
+            elif new_pin == old_pin:
+                raise ValueError("New PIN cannot be the same as the old one.")
+        except ValueError as e:
+            return e
+        file = f"./Accounts/{h}.txt"
+        with open(file,'r') as h:
+            l=h.readlines()
+        l1=l[1].split(':')[1].strip()
+        if l1==old_pin:
+            l[1]='PIN:'+new_pin+'\n'
+            with open(file,'w') as h:
+                h.writelines(l)
+            return "PIN UPDATED TO "+new_pin
+        else:
+            return 'ACCESS DENIED\nPIN DOSE NOT MATCH'
 
     def mobile(self,h,nmobile,omobile):
         try:

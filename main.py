@@ -22,6 +22,8 @@ class AccountBase(BaseModel):
     h: str
     pin: Optional[int] = None
 
+class ChangePinRequest(AccountBase):
+    newpin: int
 
 class TransactionRequest(AccountBase):
     amount: int
@@ -82,6 +84,10 @@ def update_mobile(data: UpdateMobileRequest):
 @app.post("/enquiry/")
 def enquiry(data: AccountBase):
     return{"message": atm.enquiry(data.h,data.pin)}
+
+@app.post("/change-pin/")
+def change_pin(data: ChangePinRequest):
+    return {"message": atm.change_pin(data.h,data.newpin,data.pin)}
 
 @app.post("/update-email/")
 def update_email(data: UpdateEmailRequest):
