@@ -1,18 +1,39 @@
 import random
 import string
+import os
+import sqlite3
+from hashlib import sha512
+
+
 
 class ATM:
     def __init__(self) -> None:
-        pass
+        conn = sqlite3.connect('./Database/Bank.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_no TEXT UNIQUE,
+            name TEXT,
+            pin TEXT,
+            balance REAL DEFAULT 0.0,
+            mobileno TEXT,
+            gmail TEXT
+        )
+        ''')
+        conn.commit()
+        conn.close()
     
+    def pin_hash(self, pin: str) -> str:
+        return sha512(pin.encode()).hexdigest()
     
     def ac(self):
-        with open("Accounts List.txt") as a:
-            l=a.readlines()[-1].strip()
-            l=l.split(':')[1]
-            l=l.strip('AC')
-            l='AC'+str(int(l)+1)
-            return l
+        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM accounts')
+            count = cursor.fetchone()[0]
+            account_no = f'AC1000000{count + 1:04d}'
+            return account_no
     
     def transfor(self,sender,receiver,amount,pin):
         s,m = self.withdraw(sender, amount, pin)
@@ -20,137 +41,145 @@ class ATM:
             return m
         s,m =  self.deposit(receiver, amount, "bypass")
         if not s:
-            self.deposit(sender, amount, "bypass")
+            self.deposit(sender, amount, pin)
             return m
         return f"₹{amount} Transferred from {sender} to {receiver}"
 
-    def create(self,holder,pin,mobileno,gmail):
+    def create(self, holder, pin, mobileno, gmail):
         try:
-            if len(pin)!=4 or not pin.isdigit():
+            if len(pin) != 4 or not pin.isdigit():
                 raise KeyError('PIN MUST BE 4 DIGITS')
-            if len(mobileno)!=10 or not mobileno.isdigit():
-                raise KeyError('INVALIED MOBILE NUMBER')
+            if len(mobileno) != 10 or not mobileno.isdigit():
+                raise KeyError('INVALID MOBILE NUMBER')
             if '@' not in gmail:
-                raise KeyError('INVALIED EMAIL ID')
-            b=self.ac()
-            file = f"./Accounts/{b}.txt"
-            with open("./Accounts/default.txt") as d,open(file,'x') as h:
-                l1=d.readlines()
-                h.writelines(l1)
-            with open(file) as h,open('Accounts List.txt','a') as acc:
-                l=h.readlines()
-                acc.writelines(holder+':'+b+'\n')
-        except KeyError as a:
-            return(a)
-        else:
-            l[0]='ACCOUNT HOLDER:'+holder+'\n'
-            l[1]='PIN:'+pin+'\n'
-            l[2]='MOBILE NO:'+mobileno+'\n'
-            l[3]='EMAIL ID:'+gmail+'\n'
-            with open(file,'w+') as h:
-                h.writelines(l)
-            return("ACCOUNT CREATED with",l[4],"\nYOUR ACCOUNT NUMNBER IS",b)
+                raise KeyError('INVALID EMAIL ID')
+
+            ac_no = self.ac()
+
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO accounts (account_no, name, pin, balance, mobileno, gmail)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (ac_no, holder, self.pin_hash(pin), 0.0, mobileno, gmail))
+                conn.commit()
+
+            return f"Account created successfully! Account No: {ac_no}"
+
+        except Exception as e:
+            return f"Error: {str(e)}"
 
 
-    def deposit(self,holder, amount, pin):
+
+    def deposit(self,ac_no, amount, pin):
         if pin == "bypass":
             state = True
             m = "Transforing amount to account"
         else:
-            state, m = self.check(h=holder, pin=pin)
+            state, m = self.check(ac_no=ac_no, pin=pin)
         if state :
-            file = f"./Accounts/{holder}.txt"
-            with open(file) as f:
-                l=f.readlines()
-            self.balance=int(l[4].split(':')[1].strip())
-            if self.balance<0:
-                return (False,"Balance is negative, please deposit first.")
-            if amount <= 0:
-                return (False,"Amount must be greater than zero.")
-            self.balance=self.balance+amount
-            l[4]='BALANCE:'+str(self.balance)+'\n'
-            with open(file,'w+') as f:
-                f.writelines(l)
-            return(True,f"Transaction successful! New Balance: ₹{self.balance}")
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT balance FROM accounts WHERE account_no = ?', (ac_no,))
+                result = cursor.fetchone()
+                if result is None:
+                    return (False, "Account not found.")
+                current_balance = result[0]
+                if amount <= 0:
+                    return (False, "Amount must be greater than zero.")
+                new_balance = current_balance + amount
+                cursor.execute('UPDATE accounts SET balance = ? WHERE account_no = ?', (new_balance, ac_no))
+                conn.commit()
+            return (True, f"Transaction successful! New Balance: ₹{new_balance}")
         else:
             return m
 
 
-    def withdraw(self,holder,amount, pin):
-        state,m=self.check(h=holder, pin=pin)
+    def withdraw(self,ac_no,amount, pin):
+        state,m=self.check(ac_no=ac_no, pin=pin)
         if state==True:
-            file = f"./Accounts/{holder}.txt"
-            with open(file) as h:
-                l=h.readlines()
-            self.balance=int(l[4].split(':')[1].strip())
-            if self.balance<=0:
-                return(False,"Balance is negative or Zero, please deposit first.")
-            else:
-                if self.balance<amount:
-                    return(False,"Insufficient Balance")
-                elif amount <= 0:
-                    return(False,"Amount must be greater than zero.")
-                else:
-                    self.balance=self.balance-amount
-                    l[4]='BALANCE:'+str(self.balance)+'\n'
-                    with open(file,'w+') as h:
-                        h.writelines(l)
-                    return(True,f"Transaction successful! New Balance: ₹{self.balance}")
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT balance FROM accounts WHERE account_no = ?', (ac_no,))
+                result = cursor.fetchone()
+                if result is None:
+                    return (False, "Account not found.")
+                current_balance = result[0]
+                if amount <= 0:
+                    return (False, "Amount must be greater than zero.")
+                if current_balance < amount:
+                    return (False, "Insufficient funds.")
+                new_balance = current_balance - amount
+                cursor.execute('UPDATE accounts SET balance = ? WHERE account_no = ?', (new_balance, ac_no))
+                conn.commit()
+            return (True, f"Transaction successful! New Balance: ₹{new_balance}")
         else:
             return(m)
 
 
-    def enquiry(self,holder,pin):
-        state,m=self.check(h=holder,pin=pin)
+    def enquiry(self,ac_no,pin):
+        state,m=self.check(ac_no=ac_no,pin=pin)
         if state==True:
-            file = f"./Accounts/{holder}.txt"
-            with open(file,'r') as h:
-                l=h.readlines()[4]
-            return("ACCOUNT Balance:"+l.strip())
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT balance FROM accounts WHERE account_no = ?', (ac_no,))
+                result = cursor.fetchone()
+                if result is None:
+                    return (False, "Account not found.")
+                current_balance = result[0]
+            return (True, f"Current Balance: ₹{current_balance}")
         else:
-            return m
+            
+            return (m)
 
-
-    def check(self,h, pin=None):
-        file = f"./Accounts/{h}.txt"
+    def check(self, ac_no, pin=None):
         try:
-            with open(file) as h:
-                l=h.readlines()[1]
-        except:
-            return (False,"HOLDER NOT FOUND in check")
-        else:
-            l=l.split(':')[1]
-            try:
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT pin FROM accounts WHERE account_no = ?', (ac_no,))
+                result = cursor.fetchone()
+
+                if result is None:
+                    return (False, "Account not found.")
+
+                stored_pin_hash = result[0]
+
                 if pin is None:
-                    return (False,"PIN NOT PROVIDED")
-                elif(pin==int(l)):
-                    return (True,"PIN MATCHED")
-                else:
-                    return (False,"WRONG PIN")
-            except ValueError:
-                return(False,"Invalid input. Please enter a numeric PIN.")
+                    return (True, "Account found, no PIN check required.")
 
-    def change_pin(self,h,new_pin,old_pin):
-        new_pin = str(new_pin)
-        old_pin = str(old_pin)
-        try:
-            if len(new_pin) != 4 or not new_pin.isdigit():
-                raise ValueError("PIN must be 4 digits.")
-            elif new_pin == old_pin:
-                raise ValueError("New PIN cannot be the same as the old one.")
-        except ValueError as e:
-            return e
-        file = f"./Accounts/{h}.txt"
-        with open(file,'r') as h:
-            l=h.readlines()
-        l1=l[1].split(':')[1].strip()
-        if l1==old_pin:
-            l[1]='PIN:'+new_pin+'\n'
-            with open(file,'w') as h:
-                h.writelines(l)
-            return "PIN UPDATED TO "+new_pin
-        else:
-            return 'ACCESS DENIED\nPIN DOSE NOT MATCH'
+                if self.pin_hash(pin) != stored_pin_hash:
+                    return (False, "ACCESS DENIED: Incorrect PIN.")
+
+                return (True, "ACCESS GRANTED: PIN is correct.")
+
+        except Exception as e:
+            return (False, f"Error during account check: {str(e)}")
+   
+
+    def change_pin(self, h, new_pin, old_pin):
+        new_pin = str(new_pin).strip()
+        old_pin = str(old_pin).strip()
+
+        #  Input validation
+        if len(new_pin) != 4 or not new_pin.isdigit():
+            return "ERROR: New PIN must be exactly 4 digits."
+        if new_pin == old_pin:
+            return "ERROR: New PIN cannot be the same as the old PIN."
+
+        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT pin FROM accounts WHERE account_no = ?', (h,))
+            result = cursor.fetchone()
+            if result is None:
+                return "ERROR: Account not found."
+            stored_pin_hash = result[0]
+            if self.pin_hash(old_pin) != stored_pin_hash:
+                return "ERROR: Old PIN does not match."
+            new_pin_hash = self.pin_hash(new_pin)
+            cursor.execute('UPDATE accounts SET pin = ? WHERE account_no = ?', (new_pin_hash, h))
+            conn.commit()
+        return "PIN changed successfully."
+
 
     def mobile(self,h,nmobile,omobile):
         try:
@@ -161,17 +190,19 @@ class ATM:
         except ValueError as e:
             return(e)
         #c= self.captcha()
-        file = f"./Accounts/{h}.txt"
-        with open(file,'r') as h:
-            l=h.readlines()
-        l1=l[2].split(':')[1].strip()
-        if l1==omobile.strip() :
-            l[2]='MOBILE NO:'+nmobile+'\n'
-            with open(file,'w') as h:
-                h.writelines(l)
-            return(f"MOBILE NUMBER UPDATED TO {nmobile}")
-        else:
-            return(f'ACCESS DENIED\nMOBILE NUMBER OR CAPTCHA DOSE NOT MATCH')
+        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT mobileno FROM accounts WHERE account_no = ?', (h,))
+            result = cursor.fetchone()
+            if result is None:
+                return "ERROR: Account not found."
+            old_mobile = result[0]
+            if old_mobile == omobile:
+                cursor.execute('UPDATE accounts SET mobileno = ? WHERE account_no = ?', (nmobile, h))
+                conn.commit()
+                return "MOBILE NUMBER UPDATED TO " + nmobile
+            else:
+                return "ACCESS DENIED\nMOBILE NUMBER OR CAPTCHA DOES NOT MATCH"
 
 
     def email(self,h,nemail,oemail):
@@ -183,29 +214,31 @@ class ATM:
         except ValueError as e:
             return(e)
         #c=self.captcha()
-        file = f"./Accounts/{h}.txt"
-        with open(file,'r') as h:
-            l=h.readlines()
-        l1=l[3].split(':')[1].strip().lower()
-        if l1==oemail:
-            l[3]='EMAIL ID:'+nemail+'\n'
-            with open(file,'w') as h:
-                h.writelines(l)
-            return("GMAIL UPDATED TO",nemail)
-        else:
-            return(f'ACCESS DENIED\nEMAILID OR CAPTCHA DOSE NOT MATCH')
+        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT gmail FROM accounts WHERE account_no = ?', (h,))
+            result = cursor.fetchone()
+            if result is None:
+                return "ERROR: Account not found."
+            old_email = result[0]
+            if old_email == oemail:
+                cursor.execute('UPDATE accounts SET gmail = ? WHERE account_no = ?', (nemail, h))
+                conn.commit()
+                return "EMAIL UPDATED TO " + nemail
+            else:
+                return "ACCESS DENIED\nEMAIL OR CAPTCHA DOES NOT MATCH"
 
 
     def password_check(self,h,pw):
-        if h != "admin":
-            with open(f"./Accounts/{h}.txt") as f:
-                l=f.readlines()[1]
-                return l.split(':')[1].strip() == pw
-        else:
-            with open('./Password.txt') as f:
-                password=f.read().strip()
-            return pw == password
-        
+            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT pin FROM accounts WHERE account_no = ?', (h,))
+                result = cursor.fetchone()
+                if result is None:
+                    return False
+                stored_pin_hash = result[0]
+                return self.pin_hash(pw) == stored_pin_hash
+            
 
     def captcha(self):
         for _ in range(3):

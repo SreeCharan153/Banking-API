@@ -20,12 +20,13 @@ from pydantic import BaseModel, EmailStr
 
 class AccountBase(BaseModel):
     h: str
-    pin: Optional[int] = None
+    pin: Optional[str] = None
 
 class ChangePinRequest(AccountBase):
-    newpin: int
+    newpin: str
 
 class TransactionRequest(AccountBase):
+    
     amount: int
 
 class TransforRequest(TransactionRequest):
