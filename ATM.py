@@ -237,7 +237,7 @@ class ATM:
                 if result is None:
                     return False
                 stored_pin_hash = result[0]
-                print(self.pin_hash(pw) == stored_pin_hash)
+                return(self.pin_hash(pw) == stored_pin_hash)
             
 
     def captcha(self):
