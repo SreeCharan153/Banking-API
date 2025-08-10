@@ -21,7 +21,6 @@ Thumbs.db
 
 # FastAPI/uvicorn temporary files
 *.pid
-*.db
 
 # Coverage and test artifacts
 .coverage
