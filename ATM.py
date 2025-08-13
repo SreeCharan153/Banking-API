@@ -2,6 +2,7 @@ import random
 import string
 import os
 import sqlite3
+from history import History
 from hashlib import sha512
 
 
@@ -23,9 +24,12 @@ class ATM:
         ''')
         conn.commit()
         conn.close()
+        
+        self.history = History()
     
     def pin_hash(self, pin: str) -> str:
         return sha512(pin.encode()).hexdigest()
+    
     
     def ac(self):
         with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
@@ -36,13 +40,15 @@ class ATM:
             return account_no
     
     def transfor(self,sender,receiver,amount,pin):
-        s,m = self.withdraw(sender, amount, pin)
+        s,m = self.withdraw(sender, amount, pin,True)
         if not s:
             return m
         s,m =  self.deposit(receiver, amount, "bypass")
         if not s:
             self.deposit(sender, amount, pin)
             return m
+        self.history.add_entry(sender, f"Transfored to {receiver}", amount)
+        self.history.add_entry(receiver, f"Received from {sender}", amount)
         return f"₹{amount} Transferred from {sender} to {receiver}"
 
     def create(self, holder, pin, mobileno, gmail):
@@ -90,12 +96,17 @@ class ATM:
                 new_balance = current_balance + amount
                 cursor.execute('UPDATE accounts SET balance = ? WHERE account_no = ?', (new_balance, ac_no))
                 conn.commit()
+            if pin != "bypass":
+                try:
+                    self.history.add_entry(ac_no, "Deposited", amount)
+                except Exception as e:
+                    return (False, f"Error adding history entry: {str(e)}")
             return (True, f"Transaction successful! New Balance: ₹{new_balance}")
         else:
             return m
 
 
-    def withdraw(self,ac_no,amount, pin):
+    def withdraw(self,ac_no,amount, pin,s =False):
         state,m=self.check(ac_no=ac_no, pin=pin)
         if state==True:
             with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
@@ -112,6 +123,8 @@ class ATM:
                 new_balance = current_balance - amount
                 cursor.execute('UPDATE accounts SET balance = ? WHERE account_no = ?', (new_balance, ac_no))
                 conn.commit()
+                if not s:
+                    self.history.add_entry(ac_no, "Withdrawn", amount)
             return (True, f"Transaction successful! New Balance: ₹{new_balance}")
         else:
             return(m)

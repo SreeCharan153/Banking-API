@@ -93,3 +93,15 @@ def change_pin(data: ChangePinRequest):
 @app.post("/update-email/")
 def update_email(data: UpdateEmailRequest):
     return {"message": atm.email(data.h, data.nemail, data.oemail)}
+
+@app.post("/history/")
+def get_history(data: AccountBase):
+    history = atm.history.get_history(data.h, data.pin)
+    if history:
+        return {"history": list(history)}
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "No history found for this account"}
+        )
+ 
