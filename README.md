@@ -1,4 +1,4 @@
-# 🏦 Banking System (CLI) — SQLite Backend
+# 🏦 Banking System — SQLite Backend
 
 A command-line banking application built with **Python** and **SQLite**.  
 It supports secure PIN-based login, deposits, withdrawals, transfers, balance inquiry, and a full transaction history.
@@ -44,79 +44,76 @@ Banking-API/
 
 ---
 
-## ⚙️ Installation & Setup
-~~~bash
-# 1) Clone the repository
-git clone https://github.com/SreeCharan153/Banking-API.git
-cd Banking-API
+## ⚙️ Installation & Setup  
 
-# 2) (Recommended) Create & activate a virtual environment
-python -m venv venv
-# Mac/Linux:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
+### Backend (FastAPI API)  
 
-# 3) Install dependencies
-pip install -r requirements.txt
+1. **Clone the repository**  
+   git clone https://github.com/SreeCharan153/Banking-API.git  
+   cd Banking-API  
 
-# 4) Run the CLI
-python main.py
-# Follow the on-screen prompts to create an account, login, and perform transactions.
-~~~
+2. **(Recommended) Create & activate a virtual environment**  
+   python -m venv venv  
+   # Mac/Linux:  
+   source venv/bin/activate  
+   # Windows:  
+   venv\Scripts\activate  
+
+3. **Install dependencies**  
+   pip install -r requirements.txt  
+
+4. **Start the FastAPI server**  
+   uvicorn main:app --reload  
+
+   - API available at: http://127.0.0.1:8000  
+   - Interactive docs: http://127.0.0.1:8000/docs  
 
 ---
 
-## 🧭 Usage (CLI Flow)
+### Frontend (Next.js Web Application)  
 
-### Create Account
-~~~text
-> Create Account
-Enter Name: Alice
-Enter Mobile: 9876543210
-Enter Email: alice@example.com
-Set 4-digit PIN: ****
-Account created! Your account number is: ACC1001
-~~~
+- Repository: [Banking-Frontend](https://github.com/SreeCharan153/Banking-Frontend.git)  
+- Live Demo: [Banking Web App](https://my-banking-application.vercel.app/)  
 
-### Login & Balance
-~~~text
-> Login
-Account No: ACC1001
-PIN: ****
-Login successful.
-Current Balance: 1000.00
-~~~
+**Run locally:**  
+   git clone https://github.com/SreeCharan153/Banking-Frontend.git  
+   cd Banking-Frontend  
 
-### Deposit / Withdraw
-~~~text
-> Deposit
-Amount: 500
-Deposit successful. New Balance: 1500.00
+   npm install  
+   npm run dev  
 
-> Withdraw
-Amount: 200
-Withdrawal successful. New Balance: 1300.00
-~~~
+   App will run at: http://localhost:3000  
 
-### Transfer
-~~~text
-> Transfer
-From: ACC1001
-To:   ACC1002
-Amount: 300
-Transfer successful.
-From Balance: 1000.00
-To Balance:   2300.00
-~~~
+---
 
-### History (Mini Statement)
-~~~text
-> History (ACC1001)
-[1] DEPOSIT   +500.00   2025-08-20 10:30:00
-[2] WITHDRAW  -200.00   2025-08-20 11:00:00
-[3] TRANSFER  -300.00   2025-08-20 12:15:00
-~~~
+## 🧭 Usage  
+
+### API (FastAPI Backend)  
+- Once the backend is running, visit:  
+  - Interactive API Docs → [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)  
+  - Alternative ReDoc UI → [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)  
+
+Available endpoints include:  
+- **POST /create_account** → Create a new user account  
+- **POST /login** → Authenticate with account number + PIN  
+- **GET /balance/{account_no}** → Check current balance  
+- **POST /deposit** → Deposit money into an account  
+- **POST /withdraw** → Withdraw money from an account  
+- **POST /transfer** → Transfer funds between accounts  
+- **GET /history/{account_no}** → View transaction history  
+
+### Frontend (Next.js Web App)  
+- Live Demo: [Banking Web App](https://my-banking-application.vercel.app/)  
+- Repository: [Banking-Frontend](https://github.com/SreeCharan153/Banking-Frontend.git)  
+
+The frontend provides a simple UI to:  
+- Create a new account  
+- Login with account number & PIN  
+- View current balance  
+- Deposit & withdraw funds  
+- Transfer money between accounts  
+- View transaction history (mini statement)  
+
 
 ---
 
