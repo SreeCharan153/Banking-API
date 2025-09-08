@@ -1,18 +1,17 @@
-import random
-import string
-import os
+#import random
+#import string
 import sqlite3
 from history import History
 from hashlib import sha512
-
+from datetime import datetime
 
 
 class ATM:
     def __init__(self) -> None:
         conn = sqlite3.connect('./Database/Bank.db')
         cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS accounts (
+        cursor.executescript('''
+        CREATE TABLE IF NOT EXISTS accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             account_no TEXT UNIQUE,
             name TEXT,
@@ -20,8 +19,22 @@ class ATM:
             balance REAL DEFAULT 0.0,
             mobileno TEXT,
             gmail TEXT
-        )
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name TEXT UNIQUE,
+            password TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS logins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        );
         ''')
+
         conn.commit()
         conn.close()
         
@@ -173,7 +186,6 @@ class ATM:
         new_pin = str(new_pin).strip()
         old_pin = str(old_pin).strip()
 
-        #  Input validation
         if len(new_pin) != 4 or not new_pin.isdigit():
             return "ERROR: New PIN must be exactly 4 digits."
         if new_pin == old_pin:
@@ -245,7 +257,7 @@ class ATM:
     def password_check(self,h,pw):
             with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT pin FROM accounts WHERE account_no = ?', (h,))
+                cursor.execute('SELECT password FROM users WHERE user_name = ?', (h,))
                 result = cursor.fetchone()
                 if result is None:
                     return False
@@ -253,7 +265,7 @@ class ATM:
                 return(self.pin_hash(pw) == stored_pin_hash)
             
 
-    def captcha(self):
+    '''def captcha(self):
         for _ in range(3):
             char=string.ascii_letters+string.digits
             capt =''.join(random.choice(char) for _ in range(6))
@@ -265,4 +277,14 @@ class ATM:
             else:
                 print('*' * 5, 'CAPTCHA VERIFIED', '*' * 5)
                 return True
-        return False
+        return False'''
+    
+    def login(self, username):
+        with sqlite3.connect('./Database/Bank.db', timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM users WHERE user_name = ?', (username,))
+            row = cursor.fetchone()
+            if row:
+                user_id = row[0]
+                cursor.execute('INSERT INTO logins (user_id) VALUES (?)', (user_id,))
+            conn.commit()

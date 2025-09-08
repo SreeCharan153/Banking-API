@@ -53,6 +53,7 @@ def read_root():
 @app.post("/check-password/")
 def check_password(h: str,pas: str):
     if atm.password_check(h,pas):
+        atm.login(h)
         return {"message": "Password is correct"}
     else:
         return JSONResponse(
