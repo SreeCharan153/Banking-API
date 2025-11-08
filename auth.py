@@ -1,110 +1,156 @@
 import sqlite3
 from hashlib import sha512
+import uuid
+import time
+
 class Auth:
-    
-    def ac(self):
-        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM accounts')
-            count = cursor.fetchone()[0]
-            account_no = f'AC1000000{count + 1:04d}'
-            return account_no
-    
+    def __init__(self, db_path="./Database/Bank.db", busy_ms=3000):
+        self.db_path = db_path
+        self.busy_ms = busy_ms
+
+    def _get_conn(self):
+        conn = sqlite3.connect(self.db_path, timeout=self.busy_ms / 1000)
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute(f"PRAGMA busy_timeout = {self.busy_ms}")
+        conn.execute("PRAGMA foreign_keys = ON;")
+        return conn
+
     def pin_hash(self, pin: str) -> str:
         return sha512(pin.encode()).hexdigest()
-    
-    def login(self, username):
-        with sqlite3.connect('./Database/Bank.db', timeout=10) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM users WHERE user_name = ?', (username,))
-            row = cursor.fetchone()
-            if row:
-                user_id = row[0]
-                cursor.execute('INSERT INTO logins (user_id) VALUES (?)', (user_id,))
-            conn.commit()
-            
-    def create_employ(self,username,pas):
-        try:
-            pas = self.pin_hash(pas)
-            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                            INSERT INTO users(user_name,password)
-                           VALUES(?,?)
-                           ''',(username,pas))
-                conn.commit()
-            return f'User created with username:{username}'
-        except Exception as e:
-            return f'Error:{str(e)}'
-        
-    def create(self, holder, pin, mobileno, gmail):
+
+    # ✅ Generate unique Account No safely
+    def generate_account_no(self):
+        return "AC" + str(uuid.uuid4()).replace("-", "")[:10]
+
+    # ✅ Create customer account
+    def create(self, holder, pin, vpin, mobileno, gmail):
         try:
             if len(pin) != 4 or not pin.isdigit():
-                raise KeyError('PIN MUST BE 4 DIGITS')
+                return False, "PIN must be 4 digits."
+            
+            if pin != vpin:
+                return False, "PINs do not match."
+
             if len(mobileno) != 10 or not mobileno.isdigit():
-                raise KeyError('INVALID MOBILE NUMBER')
+                return False, "Invalid mobile number."
+
             if '@' not in gmail:
-                raise KeyError('INVALID EMAIL ID')
+                return False, "Invalid email."
 
-            ac_no = self.ac()
+            account_no = self.generate_account_no()
 
-            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO accounts (account_no, name, pin, balance, mobileno, gmail)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (ac_no, holder, self.pin_hash(pin), 0.0, mobileno, gmail))
+            with self._get_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO accounts(account_no, name, pin, balance, mobileno, gmail, failed_attempts, is_locked)
+                    VALUES (?, ?, ?, ?, ?, ?, 0, 0)
+                """, (account_no, holder, self.pin_hash(pin), 0, mobileno, gmail))
+
                 conn.commit()
 
-            return f"Account created successfully! Account No: {ac_no}"
+            return True, f"Account created: {account_no}"
 
         except Exception as e:
-            return f"Error: {str(e)}"
-        
-    def password_check(self,h,pw):
-        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT password FROM users WHERE user_name = ?', (h,))
-            result = cursor.fetchone()
-            if result is None:
-                return False
-            stored_pin_hash = result[0]
-            return(self.pin_hash(pw) == stored_pin_hash)
-        
-    def check(self, ac_no, pin=None):
+            return False, f"Error: {e}"
+
+    # ✅ Employee creation
+    def create_employ(self, username, pas):
         try:
-            with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT pin FROM accounts WHERE account_no = ?', (ac_no,))
-                result = cursor.fetchone()
-
-                if result is None:
-                    return (False, "Account not found.")
-
-                stored_pin_hash = result[0]
-
-                if pin is None:
-                    return (True, "Account found, no PIN check required.")
-
-                if self.pin_hash(pin) != stored_pin_hash:
-                    return (False, "ACCESS DENIED: Incorrect PIN.")
-
-                return (True, "ACCESS GRANTED: PIN is correct.")
-
+            hashed = self.pin_hash(pas)
+            with self._get_conn() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO users(user_name, password)
+                    VALUES(?, ?)
+                """, (username, hashed))
+                conn.commit()
+            return True, f"User created: {username}"
         except Exception as e:
-            return (False, f"Error during account check: {str(e)}")
-        
-        
-    '''def captcha(self):
-        for _ in range(3):
-            char=string.ascii_letters+string.digits
-            capt =''.join(random.choice(char) for _ in range(6))
-            print('*'*5,'Human Verfication Pending','*'*5)
-            print("Captcha is",capt)
-            user =input("Enter The Captcha:")
-            if user != capt:
-                print('*' * 5, 'WRONG CAPTCHA', '*' * 5)
-            else:
-                print('*' * 5, 'CAPTCHA VERIFIED', '*' * 5)
-                return True
-        return False'''
+            return False, f"Error: {e}"
+
+    # ✅ Secure password check
+    def password_check(self, username, pw):
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT password FROM users WHERE user_name = ?", (username,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            return self.pin_hash(pw) == row[0]
+
+    # ✅ Login returns a session token
+    def login(self, username):
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+
+            # Check if user exists
+            cur.execute("SELECT id FROM users WHERE user_name = ?", (username,))
+            row = cur.fetchone()
+
+            if not row:
+                return False, "User not found."
+
+            user_id = row[0]
+
+            # Insert log entry
+            cur.execute("""
+                INSERT INTO logins (user_id)
+                VALUES (?)
+            """, (user_id,))
+
+            conn.commit()
+
+        return True, f"Login recorded for {username}"
+
+    # ✅ PIN check WITH lockout
+    def check(self, ac_no, pin):
+        pin = str(pin).strip()
+
+        with self._get_conn() as conn:
+            cur = conn.cursor()
+
+            cur.execute("""
+                SELECT pin, failed_attempts, is_locked
+                FROM accounts
+                WHERE account_no = ?
+            """, (ac_no,))
+            row = cur.fetchone()
+
+            if not row:
+                return False, "Account not found."
+
+            stored_hash, attempts, locked = row
+
+            if locked:
+                return False, "Account locked. Contact bank."
+
+            if self.pin_hash(pin) == stored_hash:
+                # ✅ Reset failed attempts
+                cur.execute("""
+                    UPDATE accounts
+                    SET failed_attempts = 0
+                    WHERE account_no = ?
+                """, (ac_no,))
+                conn.commit()
+                return True, "PIN verified."
+
+            # ❌ Wrong PIN
+            attempts += 1
+            if attempts >= 3:
+                cur.execute("""
+                    UPDATE accounts
+                    SET failed_attempts = ?, is_locked = 1
+                    WHERE account_no = ?
+                """, (attempts, ac_no))
+                conn.commit()
+                return False, "Account locked after 3 wrong PIN attempts."
+
+            # Update failed attempts
+            cur.execute("""
+                UPDATE accounts
+                SET failed_attempts = ?
+                WHERE account_no = ?
+            """, (attempts, ac_no))
+            conn.commit()
+
+            return False, f"Wrong PIN. {3 - attempts} tries left."

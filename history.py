@@ -29,11 +29,8 @@ class History:
             )
             return cursor.fetchall()
 
-    def add_entry(self, account_id, action, amount):
-        with sqlite3.connect('./Database/Bank.db',timeout=10) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO history (account_id, action, amount) VALUES (?, ?, ?)", 
-                (account_id, action, amount)
-            )
-            conn.commit()
+    def add_entry(self, cursor, account_id, action, amount, context=None):
+        cursor.execute(
+            "INSERT INTO history (account_id, action, amount, context) VALUES (?, ?, ?, ?)",
+            (account_id, action, amount, context)
+        )
