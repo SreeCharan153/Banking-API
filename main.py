@@ -1,3 +1,4 @@
+from urllib import response
 from fastapi import FastAPI, Depends, Form, HTTPException,Response,Cookie, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
@@ -203,7 +204,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
         key="atm_token",
         value=access_token,
         httponly=True,
-        samesite=None,
+        samesite='strict',
         secure=True,
         max_age=3600,
     )
@@ -213,7 +214,7 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        samesite=None,
+        samesite='strict',
         secure=True,
         max_age=60 * 60 * 24 * 30,  # 30 days
     )
@@ -229,8 +230,38 @@ def auth_check(user = Depends(get_current_user)):
 
 @app.post("/auth/logout")
 def logout(response: Response):
-    response.delete_cookie("atm_token")
+    response.delete_cookie("atm_token", samesite="strict", secure=True)
+    response.delete_cookie("refresh_token", samesite="strict", secure=True)
     return {"success": True, "message": "Logged out"}
+
+@app.post("/auth/refresh")
+def refresh(request: Request, response: Response, refresh_token: str = Cookie(None)):
+    if not refresh_token:
+        raise HTTPException(401, "Missing refresh token")
+
+    try:
+        data = decode_token(refresh_token)
+        if data.get("type") != "refresh":
+            raise HTTPException(401, "Invalid refresh token")
+
+        new_access = jwt.encode(
+            {"user": data["user"], "role": data.get("role"), "exp": datetime.utcnow() + timedelta(hours=1)},
+            SECRET_KEY, algorithm=ALGORITHM
+        )
+        new_refresh = jwt.encode(
+            {"user": data["user"], "type": "refresh", "exp": datetime.utcnow() + timedelta(days=30)},
+            SECRET_KEY, algorithm=ALGORITHM
+        )
+
+        # override cookies
+        response.set_cookie("atm_token", new_access, httponly=True, secure=True, samesite="strict", max_age=3600)
+        response.set_cookie("refresh_token", new_refresh, httponly=True, secure=True, samesite="strict", max_age=60*60*24*30)
+
+        return {"success": True}
+
+    except:
+        raise HTTPException(401, "Session expired")
+
 
 
 # ---- ACCOUNTS ----
